@@ -62,9 +62,21 @@ BEGIN
     POPUP "&Edit"
     BEGIN
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM SEPARATOR
+        MENUITEM "&Find...",                    ID_EDIT_FIND
     END
     POPUP "&View"
     BEGIN
+        MENUITEM "&Pause",                      ID_VIEW_PAUSE
+        MENUITEM "&Run",                        ID_VIEW_RUN
+        POPUP "&Update Interval"
+        BEGIN
+            MENUITEM "0.5 Seconds",                 ID_UPDATEINTERVAL_0
+            MENUITEM "1 Second",                    ID_UPDATEINTERVAL_1SECOND
+            MENUITEM "2 Seconds",                   ID_UPDATEINTERVAL_2SECONDS
+            MENUITEM "5 Seconds",                   ID_UPDATEINTERVAL_5SECONDS
+        END
+        MENUITEM SEPARATOR
         MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
     END
     POPUP "&Options"
@@ -90,6 +102,20 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\PoolMonX.ico"
+
+IDI_COPY                ICON                    "res\\copy.ico"
+
+IDI_OPEN                ICON                    "res\\open.ico"
+
+IDI_PAUSE               ICON                    "res\\Pause.ico"
+
+IDI_PIN                 ICON                    "res\\pin.ico"
+
+IDI_RUN                 ICON                    "res\\play.ico"
+
+IDI_SAVE                ICON                    "res\\save.ico"
+
+IDI_FIND                ICON                    "res\\Find.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////

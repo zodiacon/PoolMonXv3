@@ -8,6 +8,9 @@
 #include "MainFrm.h"
 #include "Helpers.h"
 #include <fstream>
+#include <ThemeHelper.h>
+#include <SortHelper.h>
+#include <ToolbarHelper.h>
 
 #pragma comment(lib, "ntdll")
 
@@ -51,6 +54,81 @@ CString CMainFrame::GetColumnText(HWND h, int row, int col) const {
 	return CString();
 }
 
+void CMainFrame::DoSort(SortInfo const* si) {
+	auto col = GetColumnManager(m_List)->GetColumnTag<ColumnType>(si->SortColumn);
+	auto asc = si->SortAscending;
+
+	auto compare = [&](auto& t1, auto& t2) {
+		switch (col) {
+			case ColumnType::TagName: return SortHelper::Sort(CString((const char*)t1.Tag, 4), CString((const char*)t2.Tag, 4), asc);
+			case ColumnType::TagValue: return SortHelper::Sort(t1.TagUlong, t2.TagUlong, asc);
+			case ColumnType::PagedAllocs: return SortHelper::Sort(t1.PagedAllocs, t2.PagedAllocs, asc);
+			case ColumnType::PagedFrees: return SortHelper::Sort(t1.PagedFrees, t2.PagedFrees, asc);
+			case ColumnType::PagedUsage: return SortHelper::Sort(t1.PagedUsed, t2.PagedUsed, asc);
+			case ColumnType::PagedDiff: return SortHelper::Sort((LONG64)t1.PagedAllocs - (LONG64)t1.PagedFrees, (LONG64)t2.PagedAllocs - (LONG64)t2.PagedFrees, asc);
+			case ColumnType::NonPagedAllocs: return SortHelper::Sort(t1.NonPagedAllocs, t2.NonPagedAllocs, asc);
+			case ColumnType::NonPagedFrees: return SortHelper::Sort(t1.NonPagedFrees, t2.NonPagedFrees, asc);
+			case ColumnType::NonPagedUsage: return SortHelper::Sort(t1.NonPagedUsed, t2.NonPagedUsed, asc);
+			case ColumnType::NonPagedDiff: return SortHelper::Sort((LONG64)t1.NonPagedAllocs - (LONG64)t1.NonPagedFrees, (LONG64)t2.NonPagedAllocs - (LONG64)t2.NonPagedFrees, asc);
+			case ColumnType::SourceName: return SortHelper::Sort(GetTagSource(t1.TagUlong), GetTagSource(t2.TagUlong), asc);
+			case ColumnType::SourceDescription: return SortHelper::Sort(GetTagDesc(t1.TagUlong), GetTagDesc(t2.TagUlong), asc);
+		}
+		return false;
+	};
+
+	std::ranges::sort(m_PoolTags, compare);
+}
+
+int CMainFrame::GetSaveColumnRange(HWND, int&) const {
+	return 1;
+}
+
+DWORD CMainFrame::OnPrePaint(int, LPNMCUSTOMDRAW cd) {
+	return CDRF_NOTIFYITEMDRAW;
+}
+
+DWORD CMainFrame::OnItemPrePaint(int, LPNMCUSTOMDRAW cd) {
+	if (cd->hdr.hwndFrom != m_List) {
+		SetMsgHandled(FALSE);
+		return 0;
+	}
+
+	auto lv = (NMLVCUSTOMDRAW*)cd;
+	int row = (int)cd->dwItemSpec;
+	auto& tag = m_PoolTags[row].TagUlong;
+
+	if (auto it = m_Changes.find(tag | (int64_t)ColumnType::All << 32); it != m_Changes.end()) {
+		lv->clrTextBk = it->second.BackColor;
+		return CDRF_DODEFAULT;
+	}
+	else {
+		lv->clrTextBk = CLR_INVALID;
+	}
+
+	return CDRF_NOTIFYSUBITEMDRAW;
+}
+
+DWORD CMainFrame::OnSubItemPrePaint(int, LPNMCUSTOMDRAW cd) {
+	auto lv = (NMLVCUSTOMDRAW*)cd;
+	int row = (int)cd->dwItemSpec;
+	auto& tag = m_PoolTags[row].TagUlong;
+
+	if (auto it = m_Changes.find(tag | (int64_t)GetColumnManager(m_List)->GetColumnTag(lv->iSubItem) << 32); it != m_Changes.end()) {
+		lv->clrTextBk = it->second.BackColor;
+	}
+	else {
+		lv->clrTextBk = CLR_INVALID;
+	}
+	if (lv->iSubItem == 0)
+		m_hOldFont = (HFONT)::SelectObject(cd->hdc, m_MonoFont);
+	else if (m_hOldFont) {
+		::SelectObject(cd->hdc, m_hOldFont);
+		m_hOldFont = nullptr;
+	}
+
+	return CDRF_DODEFAULT;
+}
+
 void CMainFrame::Refresh() {
 	if (::NtQuerySystemInformation(SystemInformationClass::SystemPoolTagInformation, m_Buffer, 1 << 22, nullptr))
 		return;
@@ -59,10 +137,38 @@ void CMainFrame::Refresh() {
 	std::vector<SYSTEM_POOLTAG> vtags(tags->TagInfo, tags->TagInfo + tags->Count);
 	if (m_PoolTags.empty()) {
 		m_PoolTags = std::move(vtags);
+		for (auto& tag : m_PoolTags)
+			m_PoolTagsMap.insert({ tag.TagUlong, tag });
 	}
 	else {
+		m_PoolTags.clear();
+		auto tick = ::GetTickCount64();
+		for (DWORD i = 0; i < tags->Count; i++) {
+			auto& tag = tags->TagInfo[i];
+			if (!m_PoolTagsMap.contains(tag.TagUlong)) {
+				//
+				// new tag appears
+				//
+				m_PoolTags.push_back(tag);
+				m_PoolTagsMap.insert({ tag.TagUlong, tag });
+				Change c;
+				c.BackColor = GetNewColor();
+				c.Type = ColumnType::All;
+				c.TargetTime = tick + m_Delay;
+				c.New = true;
+				m_Changes.insert({ tag.TagUlong | ((int64_t)c.Type << 32), c });
+			}
+			else {
+				auto& t = m_PoolTagsMap.at(tag.TagUlong);
+				AddChanges(t, tag);
+				m_PoolTags.push_back(tag);
+				t = tag;
+			}
+		}
 	}
 	m_List.SetItemCountEx((int)m_PoolTags.size(), LVSICF_NOSCROLL);
+	Sort(m_List);
+	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
 }
 
 bool CMainFrame::LoadPoolTags() {
@@ -152,9 +258,63 @@ std::wstring const& CMainFrame::GetTagDesc(ULONG tag) const {
 	return empty;
 }
 
+COLORREF CMainFrame::GetNewColor() const {
+	return ThemeHelper::IsDefault() ? RGB(0, 255, 0) : RGB(0, 128, 0);
+}
+
+COLORREF CMainFrame::GetOldColor() const {
+	return ThemeHelper::IsDefault() ? RGB(255, 96, 0) : RGB(128, 0, 0);
+}
+
+int CMainFrame::AddChanges(SYSTEM_POOLTAG const& current, SYSTEM_POOLTAG const& next) {
+	ATLASSERT(current.TagUlong == next.TagUlong);
+	int changes = 0;
+	changes += AddChange(current.TagUlong, current.PagedAllocs, next.PagedAllocs, ColumnType::PagedAllocs);
+	changes += AddChange(current.TagUlong, current.PagedFrees, next.PagedFrees, ColumnType::PagedFrees);
+	changes += AddChange(current.TagUlong, current.PagedUsed, next.PagedUsed, ColumnType::PagedUsage);
+	changes += AddChange(current.TagUlong, (LONG64)current.PagedAllocs - (LONG64)current.PagedFrees, (LONG64)next.PagedAllocs - (LONG64)next.PagedFrees, ColumnType::PagedDiff);
+
+	changes += AddChange(next.TagUlong, current.NonPagedAllocs, next.NonPagedAllocs, ColumnType::NonPagedAllocs);
+	changes += AddChange(next.TagUlong, current.NonPagedFrees, next.NonPagedFrees, ColumnType::NonPagedFrees);
+	changes += AddChange(next.TagUlong, current.NonPagedUsed, next.NonPagedUsed, ColumnType::NonPagedUsage);
+	changes += AddChange(next.TagUlong, (LONG64)current.NonPagedAllocs - (LONG64)current.NonPagedFrees, (LONG64)next.NonPagedAllocs - (LONG64)next.NonPagedFrees, ColumnType::NonPagedDiff);
+
+	return changes;
+}
+
+int CMainFrame::AddChange(ULONG tag, LONG64 current, LONG64 next, ColumnType type) {
+	if (current == next)
+		return 0;
+
+	Change c;
+	c.New = next > current;
+	c.Type = type;
+	c.BackColor = c.New ? GetNewColor() : GetOldColor();
+	c.TargetTime = ::GetTickCount64() + m_Delay;
+	m_Changes.insert({ tag | ((int64_t)type << 32), c });
+
+	return 1;
+}
+
 LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	CreateSimpleStatusBar();
+	m_StatusBar.SubclassWindow(m_hWndStatusBar);
+	int parts[] = { 100, 300, 500 };
+	m_StatusBar.SetParts(_countof(parts), parts);
 	UISetCheck(ID_VIEW_STATUS_BAR, 1);
+
+	ToolBarButtonInfo const buttons[] = {
+		{ ID_VIEW_RUN, IDI_RUN },
+		{ ID_VIEW_PAUSE, IDI_PAUSE },
+		{ 0 },
+		{ ID_EDIT_COPY, IDI_COPY },
+		{ 0 },
+		{ ID_EDIT_FIND, IDI_FIND },
+	};
+	CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
+	auto tb = ToolbarHelper::CreateAndInitToolBar(m_hWnd, buttons, _countof(buttons));
+	AddSimpleReBarBand(tb);
+	UIAddToolBar(tb);
 
 	m_hWndClient = m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_OWNERDATA);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
@@ -181,6 +341,18 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	LoadPoolTags();
 
+	auto menu = GetMenu();
+	InitMenu();
+	AddMenu(menu);
+	UIAddMenu(menu);
+	UISetCheck(ID_VIEW_RUN, TRUE);
+
+	LOGFONT lf;
+	((CFontHandle)m_List.GetFont()).GetLogFont(lf);
+	wcscpy_s(lf.lfFaceName, L"Consolas");
+	lf.lfWeight = FW_BOLD;
+	m_MonoFont.CreateFontIndirect(&lf);
+
 	m_Buffer = ::VirtualAlloc(nullptr, 1 << 22, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	if (!m_Buffer) {
 		AtlMessageBox(m_hWnd, L"Out of memory!", IDR_MAINFRAME, MB_ICONERROR);
@@ -188,8 +360,26 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	}
 
 	Refresh();
+	SetTimer(1, m_Interval);
 
 	return 0;
+}
+
+void CMainFrame::InitMenu() {
+	struct {
+		UINT id, icon;
+	} cmds[] = {
+		{ ID_EDIT_COPY, IDI_COPY },
+		{ ID_EDIT_FIND, IDI_FIND },
+		{ ID_FILE_SAVE, IDI_SAVE },
+		{ ID_FILE_OPEN, IDI_OPEN },
+		{ ID_VIEW_RUN, IDI_RUN },
+		{ ID_VIEW_PAUSE, IDI_PAUSE },
+		{ ID_OPTIONS_ALWAYSONTOP, IDI_PIN },
+	};
+	for (auto& cmd : cmds) {
+		AddCommand(cmd.id, cmd.icon);
+	}
 }
 
 LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
@@ -202,6 +392,22 @@ LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 	bHandled = FALSE;
 
 	return 1;
+}
+
+LRESULT CMainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& bHandled) {
+	if (id == 1) {
+		auto tick = ::GetTickCount64();
+		std::vector<ULONG64> tags;
+		for (auto& [t, c] : m_Changes)
+			if (tick > c.TargetTime) {
+				tags.push_back(t);
+			}
+		for (auto& t : tags)
+			m_Changes.erase(t);
+
+		Refresh();
+	}
+	return 0;
 }
 
 LRESULT CMainFrame::OnFileExit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -227,4 +433,26 @@ LRESULT CMainFrame::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	CAboutDlg dlg;
 	dlg.DoModal();
 	return 0;
+}
+
+LRESULT CMainFrame::OnEditFind(WORD, WORD, HWND, BOOL&) {
+	return LRESULT();
+}
+
+LRESULT CMainFrame::OnViewPause(WORD, WORD, HWND, BOOL&) {
+	KillTimer(1);
+	UISetCheck(ID_VIEW_RUN, FALSE);
+	UISetCheck(ID_VIEW_PAUSE, TRUE);
+	return 0;
+}
+
+LRESULT CMainFrame::OnViewRun(WORD, WORD, HWND, BOOL&) {
+	SetTimer(1, m_Interval);
+	UISetCheck(ID_VIEW_RUN, TRUE);
+	UISetCheck(ID_VIEW_PAUSE, FALSE);
+	return 0;
+}
+
+LRESULT CMainFrame::OnEditCopy(WORD, WORD, HWND, BOOL&) {
+	return LRESULT();
 }

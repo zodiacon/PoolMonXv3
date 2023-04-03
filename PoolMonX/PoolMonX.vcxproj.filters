@@ -13,6 +13,9 @@
       <UniqueIdentifier>{9522c8a5-fb65-4d9c-8107-a6173b369c09}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;jpg;jpeg;jpe;manifest</Extensions>
     </Filter>
+    <Filter Include="Resource Files\Icons">
+      <UniqueIdentifier>{bbc3488c-2e34-4335-bc7c-3da2705f1c34}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -54,8 +57,29 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\PoolMonX.ico">
+    <Image Include="res\save.ico">
       <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\PoolMonX.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\copy.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Find.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\open.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\Pause.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\pin.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\play.ico">
+      <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
