@@ -16,7 +16,6 @@
 #define IDI_RADIO                       211
 #define IDC_VERSION                     1000
 #define IDC_COPYRIGHT                   1001
-#define IDC_SYSLINK1                    1002
 #define IDC_LINK                        1002
 #define ID_HELP_ABOUTWINDOWS            32775
 #define ID_OPTIONS_ALWAYSONTOP          32776
@@ -30,13 +29,16 @@
 #define ID_UPDATEINTERVAL_2SECONDS      32784
 #define ID_UPDATEINTERVAL_5SECONDS      32785
 #define ID_EDIT_FIND32786               32786
+#define ID_EDIT_SELECTALL               32787
+#define ID_FILE_NEWWINDOW               32794
+#define ID_FILE_CLOSE32795              32795
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        212
-#define _APS_NEXT_COMMAND_VALUE         32787
+#define _APS_NEXT_COMMAND_VALUE         32796
 #define _APS_NEXT_CONTROL_VALUE         1003
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

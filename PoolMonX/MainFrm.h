@@ -42,6 +42,7 @@ public:
 	CString GetColumnText(HWND, int row, int col) const;
 	void DoSort(SortInfo const* si);
 	int GetSaveColumnRange(HWND, int&) const;
+	void OnStateChanged(HWND, int from, int to, UINT oldState, UINT newState);
 
 	DWORD OnPrePaint(int, LPNMCUSTOMDRAW cd);
 	DWORD OnItemPrePaint(int, LPNMCUSTOMDRAW cd);
@@ -51,11 +52,13 @@ protected:
 	BEGIN_MSG_MAP(CMainFrame)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnEditFind)
-		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnEditCopy)
 		COMMAND_ID_HANDLER(ID_VIEW_RUN, OnViewRun)
 		COMMAND_ID_HANDLER(ID_VIEW_PAUSE, OnViewPause)
+		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnEditCopy)
+		COMMAND_ID_HANDLER(ID_EDIT_SELECT_ALL, OnEditSelectAll)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		COMMAND_ID_HANDLER(ID_FILE_SAVE, OnFileSave)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
@@ -87,6 +90,7 @@ private:
 
 	void InitMenu();
 	void Refresh();
+	void UpdateUI();
 	bool LoadPoolTags();
 	CString const& GetTagAsString(ULONG tag) const;
 	std::wstring const& GetTagSource(ULONG tag) const;
@@ -95,6 +99,7 @@ private:
 	COLORREF GetOldColor() const;
 	int AddChanges(SYSTEM_POOLTAG const& current, SYSTEM_POOLTAG const& next);
 	int AddChange(ULONG tag, LONG64 current, LONG64 next, ColumnType type);
+	bool DoSave(bool all, PCWSTR path) const;
 
 	struct KnownPoolTag {
 		ULONG Tag;
@@ -128,10 +133,12 @@ private:
 	LRESULT OnViewPause(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewRun(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnEditSelectAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 private:
 	CListViewCtrl m_List;
 	CMultiPaneStatusBarCtrl m_StatusBar;
+	CFindReplaceDialog* m_pFindDlg{ nullptr };
 	std::unordered_map<ULONG, KnownPoolTag> m_KnownTags;
 	std::vector<SYSTEM_POOLTAG> m_PoolTags;
 	std::unordered_map<ULONG, SYSTEM_POOLTAG> m_PoolTagsMap;
@@ -142,5 +149,6 @@ private:
 	int m_Delay{ 1000 };
 	CFont m_MonoFont;
 	HFONT m_hOldFont{ nullptr };
+	bool m_IsRunning{ true };
 	inline static int m_Intervals[]{ 0, 500, 1000, 2000, 5000 };
 };

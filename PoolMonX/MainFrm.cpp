@@ -11,6 +11,8 @@
 #include <ThemeHelper.h>
 #include <SortHelper.h>
 #include <ToolbarHelper.h>
+#include <ClipboardHelper.h>
+#include <ListViewhelper.h>
 
 #pragma comment(lib, "ntdll")
 
@@ -81,6 +83,11 @@ void CMainFrame::DoSort(SortInfo const* si) {
 
 int CMainFrame::GetSaveColumnRange(HWND, int&) const {
 	return 1;
+}
+
+void CMainFrame::OnStateChanged(HWND, int from, int to, UINT oldState, UINT newState) {
+	if ((oldState & LVIS_SELECTED) || (newState & LVIS_SELECTED))
+		UpdateUI();
 }
 
 DWORD CMainFrame::OnPrePaint(int, LPNMCUSTOMDRAW cd) {
@@ -169,6 +176,10 @@ void CMainFrame::Refresh() {
 	m_List.SetItemCountEx((int)m_PoolTags.size(), LVSICF_NOSCROLL);
 	Sort(m_List);
 	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+}
+
+void CMainFrame::UpdateUI() {
+	UIEnable(ID_EDIT_COPY, m_List.GetSelectedCount() > 0);
 }
 
 bool CMainFrame::LoadPoolTags() {
@@ -296,6 +307,10 @@ int CMainFrame::AddChange(ULONG tag, LONG64 current, LONG64 next, ColumnType typ
 	return 1;
 }
 
+bool CMainFrame::DoSave(bool all, PCWSTR path) const {
+	return false;
+}
+
 LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	CreateSimpleStatusBar();
 	m_StatusBar.SubclassWindow(m_hWndStatusBar);
@@ -363,6 +378,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	Refresh();
 	SetTimer(1, m_Interval);
+	UpdateUI();
 
 	return 0;
 }
@@ -437,24 +453,65 @@ LRESULT CMainFrame::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	return 0;
 }
 
+LRESULT CMainFrame::OnFileSave(WORD, WORD, HWND, BOOL&) {
+	auto running = m_IsRunning;
+	if(running)
+		SendMessage(WM_COMMAND, ID_VIEW_PAUSE);
+	CSimpleFileDialog dlg(FALSE, L"csv", nullptr, OFN_ENABLESIZING | OFN_OVERWRITEPROMPT | OFN_EXPLORER,
+		L"CSV Files (*.csv)\0*.csv\0Text Files (*.txt)\0*.txt\0All Files\0*.*\0", m_hWnd);
+	ThemeHelper::Suspend();
+	auto ok = IDOK == dlg.DoModal();
+	ThemeHelper::Resume();
+	if (ok) {
+		if (!DoSave(true, dlg.m_szFileName))
+			AtlMessageBox(m_hWnd, L"Failed to save file.", IDR_MAINFRAME, MB_ICONERROR);
+	}
+	if (running)
+		SendMessage(WM_COMMAND, ID_VIEW_RUN);
+	return LRESULT();
+}
+
 LRESULT CMainFrame::OnEditFind(WORD, WORD, HWND, BOOL&) {
 	return LRESULT();
 }
 
-LRESULT CMainFrame::OnViewPause(WORD, WORD, HWND, BOOL&) {
+LRESULT CMainFrame::OnViewPause(WORD src, WORD id, HWND, BOOL& handled) {
+	if (!m_IsRunning) {
+		if (src)
+			SendMessage(WM_COMMAND, ID_VIEW_RUN);
+		handled = FALSE;
+		return 0;
+	}
 	KillTimer(1);
 	UISetCheck(ID_VIEW_RUN, FALSE);
 	UISetCheck(ID_VIEW_PAUSE, TRUE);
+	m_IsRunning = false;
+
 	return 0;
 }
 
-LRESULT CMainFrame::OnViewRun(WORD, WORD, HWND, BOOL&) {
+LRESULT CMainFrame::OnViewRun(WORD, WORD, HWND, BOOL& handled) {
+	if (m_IsRunning) {
+		handled = FALSE;
+		return 0;
+	}
 	SetTimer(1, m_Interval);
 	UISetCheck(ID_VIEW_RUN, TRUE);
 	UISetCheck(ID_VIEW_PAUSE, FALSE);
+	m_IsRunning = true;
+
 	return 0;
 }
 
 LRESULT CMainFrame::OnEditCopy(WORD, WORD, HWND, BOOL&) {
-	return LRESULT();
+	auto text = ListViewHelper::GetSelectedRowsAsString(m_List, L",");
+	ClipboardHelper::CopyText(m_hWnd, text);
+
+	return 0;
+}
+
+LRESULT CMainFrame::OnEditSelectAll(WORD, WORD, HWND, BOOL&) {
+	m_List.SelectAllItems(true);
+
+	return 0;
 }
