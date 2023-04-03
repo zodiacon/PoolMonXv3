@@ -117,6 +117,10 @@ IDI_SAVE                ICON                    "res\\save.ico"
 
 IDI_FIND                ICON                    "res\\Find.ico"
 
+IDI_CHECK               ICON                    "res\\check.ico"
+
+IDI_RADIO               ICON                    "res\\radio.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -128,9 +132,12 @@ STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About PoolMonX"
 FONT 9, "Segoe UI", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,77,64,50,14
-    CTEXT           "PoolMonX Application v1.0\n\n(c) Copyright 2023",IDC_STATIC,42,7,94,32
-    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,18,17
+    DEFPUSHBUTTON   "OK",IDOK,82,64,40,14
+    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,20,20
+    LTEXT           "Static",IDC_VERSION,53,7,114,8
+    LTEXT           "Static",IDC_COPYRIGHT,53,23,114,8
+    CONTROL         "<a>https://github.com/zodiacon/poolmonxv3</a>",IDC_LINK,
+                    "SysLink",WS_TABSTOP,35,42,146,14
 END
 
 
@@ -183,8 +190,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 3,0,0,0
+ PRODUCTVERSION 3,0,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -197,15 +204,16 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904B0"
+        BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription", "PoolMonX Module"
-            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "CompanyName", "Scorpio Software"
+            VALUE "FileDescription", "Kernel Pool Monitor"
+            VALUE "FileVersion", "3.0.0.0"
             VALUE "InternalName", "PoolMonX"
-            VALUE "LegalCopyright", "Copyright 2023"
+            VALUE "LegalCopyright", "©2016-2023 Pavel Yosifovich"
             VALUE "OriginalFilename", "PoolMonX.exe"
-            VALUE "ProductName", "PoolMonX Module"
-            VALUE "ProductVersion", "1, 0, 0, 1"
+            VALUE "ProductName", "PoolMonX"
+            VALUE "ProductVersion", "3.0"
         END
     END
     BLOCK "VarFileInfo"

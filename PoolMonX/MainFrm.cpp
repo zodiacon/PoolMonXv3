@@ -343,6 +343,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	auto menu = GetMenu();
 	InitMenu();
+	SetCheckIcon(IDI_CHECK, IDI_RADIO);
+
 	AddMenu(menu);
 	UIAddMenu(menu);
 	UISetCheck(ID_VIEW_RUN, TRUE);

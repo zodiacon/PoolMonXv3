@@ -231,6 +231,7 @@
     <ResourceCompile Include="PoolMonX.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\check.ico" />
     <Image Include="res\copy.ico" />
     <Image Include="res\Find.ico" />
     <Image Include="res\open.ico" />
@@ -238,6 +239,7 @@
     <Image Include="res\pin.ico" />
     <Image Include="res\play.ico" />
     <Image Include="res\PoolMonX.ico" />
+    <Image Include="res\radio.ico" />
     <Image Include="res\save.ico" />
   </ItemGroup>
   <ItemGroup>

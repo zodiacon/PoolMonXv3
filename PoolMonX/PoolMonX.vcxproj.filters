@@ -57,9 +57,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\save.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="res\PoolMonX.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
@@ -79,6 +76,15 @@
       <Filter>Resource Files\Icons</Filter>
     </Image>
     <Image Include="res\play.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\save.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\check.ico">
+      <Filter>Resource Files\Icons</Filter>
+    </Image>
+    <Image Include="res\radio.ico">
       <Filter>Resource Files\Icons</Filter>
     </Image>
   </ItemGroup>

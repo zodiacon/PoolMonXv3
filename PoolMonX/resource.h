@@ -11,8 +11,13 @@
 #define IDI_PIN                         206
 #define IDI_RUN                         207
 #define IDI_SAVE                        208
-#define IDI_ICON1                       209
 #define IDI_FIND                        209
+#define IDI_CHECK                       210
+#define IDI_RADIO                       211
+#define IDC_VERSION                     1000
+#define IDC_COPYRIGHT                   1001
+#define IDC_SYSLINK1                    1002
+#define IDC_LINK                        1002
 #define ID_HELP_ABOUTWINDOWS            32775
 #define ID_OPTIONS_ALWAYSONTOP          32776
 #define ID_OPTIONS_DARKMODE             32777
@@ -30,9 +35,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        210
+#define _APS_NEXT_RESOURCE_VALUE        212
 #define _APS_NEXT_COMMAND_VALUE         32787
-#define _APS_NEXT_CONTROL_VALUE         1000
+#define _APS_NEXT_CONTROL_VALUE         1003
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
