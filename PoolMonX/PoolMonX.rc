@@ -54,9 +54,8 @@ BEGIN
     POPUP "&File"
     BEGIN
         MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
-        MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
-        MENUITEM "&Close",                      ID_FILE_CLOSE
-        MENUITEM "New &Window",                 ID_FILE_NEWWINDOW
+        MENUITEM "&Save...\tCtrl+S",            ID_FILE_SAVE
+        MENUITEM "Save Selected...",            ID_FILE_SAVESELECTION
         MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
@@ -65,7 +64,9 @@ BEGIN
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
         MENUITEM "Select &All",                 ID_EDIT_SELECT_ALL
         MENUITEM SEPARATOR
-        MENUITEM "&Find...",                    ID_EDIT_FIND
+        MENUITEM "&Find...\tCtrl+F",            ID_EDIT_FIND
+        MENUITEM "&Quick Find...\tCtrl+Q",      ID_EDIT_QUICKFIND
+        MENUITEM "Find &Next\tF3",              ID_EDIT_FIND_NEXT
     END
     POPUP "&View"
     BEGIN
@@ -92,6 +93,17 @@ BEGIN
         MENUITEM "&About PoolMonX...",          ID_APP_ABOUT
         MENUITEM SEPARATOR
         MENUITEM "About &Windows...",           ID_HELP_ABOUTWINDOWS
+    END
+END
+
+IDR_CONTEXT MENU
+BEGIN
+    POPUP "list"
+    BEGIN
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "Select &All",                 ID_EDIT_SELECT_ALL
+        MENUITEM SEPARATOR
+        MENUITEM "Save Selected...",            ID_FILE_SAVESELECTION
     END
 END
 
@@ -174,8 +186,10 @@ BEGIN
     VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
     "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
     "F",            ID_EDIT_FIND,           VIRTKEY, CONTROL, NOINVERT
+    "F",            ID_EDIT_FIND,           VIRTKEY, CONTROL, NOINVERT
     "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
     VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    "Q",            ID_EDIT_QUICKFIND,      VIRTKEY, CONTROL, NOINVERT
     "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
     VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
     "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
@@ -186,6 +200,7 @@ BEGIN
     VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
     VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
     VK_SPACE,       ID_VIEW_PAUSE,          VIRTKEY, NOINVERT
+    VK_F3,          ID_EDIT_FIND_NEXT,      VIRTKEY, NOINVERT
 END
 
 
@@ -290,6 +305,7 @@ BEGIN
     ID_EDIT_CUT             "Cut the selection and put it on the Clipboard\nCut"
     ID_EDIT_FIND            "Find the specified text\nFind"
     ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
+    ID_EDIT_FIND_NEXT       "\nFind Next"
     ID_EDIT_SELECT_ALL      "Select the entire document\nSelect All"
     ID_EDIT_UNDO            "Undo the last action\nUndo"
     ID_EDIT_REDO            "Redo the previously undone action\nRedo"

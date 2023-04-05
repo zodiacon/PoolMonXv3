@@ -29,6 +29,9 @@ NTSTATUS NTAPI NtQuerySystemInformation(
 );
 
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg) {
+	if (m_pFindDlg && m_pFindDlg->IsDialogMessageW(pMsg))
+		return TRUE;
+
 	return CFrameWindowImpl<CMainFrame>::PreTranslateMessage(pMsg);
 }
 
@@ -88,6 +91,16 @@ int CMainFrame::GetSaveColumnRange(HWND, int&) const {
 void CMainFrame::OnStateChanged(HWND, int from, int to, UINT oldState, UINT newState) {
 	if ((oldState & LVIS_SELECTED) || (newState & LVIS_SELECTED))
 		UpdateUI();
+}
+
+bool CMainFrame::OnRightClickList(HWND, int row, int col, POINT const& pt) {
+	if (row < 0)
+		return false;
+
+	CMenu menu;
+	menu.LoadMenu(IDR_CONTEXT);
+
+	return ShowContextMenu(menu.GetSubMenu(0), 0, pt.x, pt.y);
 }
 
 DWORD CMainFrame::OnPrePaint(int, LPNMCUSTOMDRAW cd) {
@@ -152,6 +165,9 @@ void CMainFrame::Refresh() {
 		auto tick = ::GetTickCount64();
 		for (DWORD i = 0; i < tags->Count; i++) {
 			auto& tag = tags->TagInfo[i];
+			if (m_Filter && !m_Filter(tag, i))
+				continue;
+
 			if (!m_PoolTagsMap.contains(tag.TagUlong)) {
 				//
 				// new tag appears
@@ -346,6 +362,7 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	AddSimpleReBarBand(m_QuickEdit, nullptr, 0, 200, 1);
 	SizeSimpleReBarBands();
 	m_QuickEdit.SetWindowPos(nullptr, 0, 0, 200, 20, SWP_NOMOVE | SWP_NOREPOSITION);
+	m_QuickEdit.SetCueBannerText(L"Type to filter (Ctrl+Q)");
 
 	m_hWndClient = m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_OWNERDATA);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
@@ -365,7 +382,6 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	cm->AddColumn(L"Source", LVCFMT_LEFT, 150, ColumnType::SourceName);
 	cm->AddColumn(L"Description", LVCFMT_LEFT, 300, ColumnType::SourceDescription);
 
-	// register object for message filtering and idle updates
 	auto pLoop = _Module.GetMessageLoop();
 	ATLASSERT(pLoop != nullptr);
 	pLoop->AddMessageFilter(this);
@@ -471,9 +487,9 @@ LRESULT CMainFrame::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	return 0;
 }
 
-LRESULT CMainFrame::OnFileSave(WORD, WORD, HWND, BOOL&) {
+void CMainFrame::SaveCommon(bool all) {
 	auto running = m_IsRunning;
-	if(running)
+	if (running)
 		SendMessage(WM_COMMAND, ID_VIEW_PAUSE);
 	CSimpleFileDialog dlg(FALSE, L"csv", nullptr, OFN_ENABLESIZING | OFN_OVERWRITEPROMPT | OFN_EXPLORER,
 		L"CSV Files (*.csv)\0*.csv\0Text Files (*.txt)\0*.txt\0All Files\0*.*\0", m_hWnd);
@@ -481,16 +497,30 @@ LRESULT CMainFrame::OnFileSave(WORD, WORD, HWND, BOOL&) {
 	auto ok = IDOK == dlg.DoModal();
 	ThemeHelper::Resume();
 	if (ok) {
-		if (!DoSave(true, dlg.m_szFileName))
+		if (!DoSave(all, dlg.m_szFileName))
 			AtlMessageBox(m_hWnd, L"Failed to save file.", IDR_MAINFRAME, MB_ICONERROR);
 	}
 	if (running)
 		SendMessage(WM_COMMAND, ID_VIEW_RUN);
-	return LRESULT();
+}
+
+LRESULT CMainFrame::OnFileSave(WORD, WORD, HWND, BOOL&) {
+	SaveCommon(true);
+	return 0;
+}
+
+LRESULT CMainFrame::OnFileSaveSelected(WORD, WORD, HWND, BOOL&) {
+	SaveCommon(false);
+	return 0;
 }
 
 LRESULT CMainFrame::OnEditFind(WORD, WORD, HWND, BOOL&) {
-	return LRESULT();
+	if (m_pFindDlg == nullptr) {
+		m_pFindDlg = new CFindReplaceDialog;
+		m_pFindDlg->Create(TRUE, m_SearchText, nullptr, FR_DOWN | FR_HIDEWHOLEWORD, m_hWnd);
+		m_pFindDlg->ShowWindow(SW_SHOW);
+	}
+	return 0;
 }
 
 LRESULT CMainFrame::OnViewPause(WORD src, WORD id, HWND, BOOL& handled) {
@@ -532,4 +562,57 @@ LRESULT CMainFrame::OnEditSelectAll(WORD, WORD, HWND, BOOL&) {
 	m_List.SelectAllItems(true);
 
 	return 0;
+}
+
+LRESULT CMainFrame::OnQuickFind(WORD, WORD, HWND, BOOL&) {
+	m_QuickEdit.SetFocus();
+	return 0;
+}
+
+LRESULT CMainFrame::OnSearchTextChanged(WORD, WORD, HWND, BOOL&) {
+	m_QuickEdit.GetWindowText(m_SearchText);
+	m_SearchText.MakeUpper();
+	if (m_SearchText.IsEmpty()) {
+		m_Filter = nullptr;
+	}
+	else {
+		m_Filter = [&](auto& tag, auto) {
+			CString str(GetTagAsString(tag.TagUlong));
+			str.MakeUpper();
+			if (str.Find(m_SearchText) >= 0)
+				return true;
+			if (str = GetTagSource(tag.TagUlong).c_str(), str.MakeUpper(); str.Find(m_SearchText) >= 0)
+				return true;
+			if (str = GetTagDesc(tag.TagUlong).c_str(), str.MakeUpper(); str.Find(m_SearchText) >= 0)
+				return true;
+			return false;
+			};
+	}
+	Refresh();
+	return 0;
+}
+
+LRESULT CMainFrame::OnFind(UINT msg, WPARAM wp, LPARAM lp, BOOL&) {
+	if (m_pFindDlg->IsTerminating()) {
+		m_pFindDlg = nullptr;
+		return 0;
+	}
+	m_pFindDlg->SetFocus();
+
+	auto searchDown = m_pFindDlg->SearchDown();
+	auto index = ListViewHelper::SearchItem(m_List, m_pFindDlg->GetFindString(), searchDown, m_pFindDlg->MatchCase());
+
+	if (index >= 0) {
+		m_List.SelectItem(index);
+		m_List.SetFocus();
+	}
+	else {
+		AtlMessageBox(m_hWnd, L"Finished searching.", IDR_MAINFRAME, MB_ICONINFORMATION);
+	}
+
+	return 0;
+}
+
+LRESULT CMainFrame::OnEditFindNext(WORD, WORD, HWND, BOOL&) {
+	return SendMessage(CFindReplaceDialog::GetFindReplaceMsg());
 }

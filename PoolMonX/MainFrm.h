@@ -41,6 +41,7 @@ public:
 	void DoSort(SortInfo const* si);
 	int GetSaveColumnRange(HWND, int&) const;
 	void OnStateChanged(HWND, int from, int to, UINT oldState, UINT newState);
+	bool OnRightClickList(HWND, int row, int col, POINT const& pt);
 
 	DWORD OnPrePaint(int, LPNMCUSTOMDRAW cd);
 	DWORD OnItemPrePaint(int, LPNMCUSTOMDRAW cd);
@@ -49,15 +50,20 @@ public:
 protected:
 	BEGIN_MSG_MAP(CMainFrame)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
+		COMMAND_CODE_HANDLER(EN_DELAYCHANGE, OnSearchTextChanged)
 		COMMAND_ID_HANDLER(ID_EDIT_FIND, OnEditFind)
+		COMMAND_ID_HANDLER(ID_EDIT_FIND_NEXT, OnEditFindNext)
 		COMMAND_ID_HANDLER(ID_VIEW_RUN, OnViewRun)
 		COMMAND_ID_HANDLER(ID_VIEW_PAUSE, OnViewPause)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnEditCopy)
 		COMMAND_ID_HANDLER(ID_EDIT_SELECT_ALL, OnEditSelectAll)
 		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
+		COMMAND_ID_HANDLER(ID_EDIT_QUICKFIND, OnQuickFind)
+		MESSAGE_HANDLER(CFindReplaceDialog::GetFindReplaceMsg(), OnFind)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		COMMAND_ID_HANDLER(ID_FILE_SAVE, OnFileSave)
+		COMMAND_ID_HANDLER(ID_FILE_SAVESELECTION, OnFileSaveSelected)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
@@ -99,6 +105,7 @@ private:
 	int AddChanges(SYSTEM_POOLTAG const& current, SYSTEM_POOLTAG const& next);
 	int AddChange(ULONG tag, LONG64 current, LONG64 next, ColumnType type);
 	bool DoSave(bool all, PCWSTR path) const;
+	void SaveCommon(bool all);
 
 	struct KnownPoolTag {
 		ULONG Tag;
@@ -127,12 +134,17 @@ private:
 	LRESULT OnViewStatusBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFileSave(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFileSaveSelected(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnFileOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewPause(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewRun(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditCopy(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnEditSelectAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnQuickFind(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnSearchTextChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnFind(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnEditFindNext(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 private:
 	CListViewCtrl m_List;
@@ -150,6 +162,8 @@ private:
 	CFont m_MonoFont;
 	HFONT m_hOldFont{ nullptr };
 	int m_IntervalIndex{ 1 };
-	bool m_IsRunning{ true };
+	std::function<bool(SYSTEM_POOLTAG const&, int)> m_Filter;
+	mutable bool m_IsRunning{ true };
+	CString m_SearchText;
 	inline static int m_Intervals[]{ 500, 1000, 2000, 5000 };
 };

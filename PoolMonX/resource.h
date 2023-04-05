@@ -14,6 +14,8 @@
 #define IDI_FIND                        209
 #define IDI_CHECK                       210
 #define IDI_RADIO                       211
+#define IDR_MENU1                       212
+#define IDR_CONTEXT                     212
 #define IDC_VERSION                     1000
 #define IDC_COPYRIGHT                   1001
 #define IDC_LINK                        1002
@@ -28,17 +30,17 @@
 #define ID_UPDATEINTERVAL_1SECOND       32783
 #define ID_UPDATEINTERVAL_2SECONDS      32784
 #define ID_UPDATEINTERVAL_5SECONDS      32785
-#define ID_EDIT_FIND32786               32786
-#define ID_EDIT_SELECTALL               32787
-#define ID_FILE_NEWWINDOW               32794
-#define ID_FILE_CLOSE32795              32795
+#define ID_EDIT_SELECTALL               32786
+#define ID_FILE_CLOSE32795              32787
+#define ID_EDIT_QUICKFIND               32788
+#define ID_FILE_SAVESELECTION           32789
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        212
-#define _APS_NEXT_COMMAND_VALUE         32796
+#define _APS_NEXT_RESOURCE_VALUE        213
+#define _APS_NEXT_COMMAND_VALUE         32790
 #define _APS_NEXT_CONTROL_VALUE         1003
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
