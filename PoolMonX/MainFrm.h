@@ -1,11 +1,9 @@
-// MainFrm.h : interface of the CMainFrame class
-//
-/////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include <VirtualListView.h>
 #include <OwnerDrawnMenu.h>
+#include <SortedFilteredVector.h>
+#include <QuickFindEdit.h>
 
 struct SYSTEM_POOLTAG {
 	union {
@@ -56,6 +54,7 @@ protected:
 		COMMAND_ID_HANDLER(ID_VIEW_PAUSE, OnViewPause)
 		COMMAND_ID_HANDLER(ID_EDIT_COPY, OnEditCopy)
 		COMMAND_ID_HANDLER(ID_EDIT_SELECT_ALL, OnEditSelectAll)
+		COMMAND_ID_HANDLER(ID_OPTIONS_ALWAYSONTOP, OnAlwaysOnTop)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		COMMAND_ID_HANDLER(ID_FILE_SAVE, OnFileSave)
@@ -138,9 +137,10 @@ private:
 private:
 	CListViewCtrl m_List;
 	CMultiPaneStatusBarCtrl m_StatusBar;
+	CQuickFindEdit m_QuickEdit;
 	CFindReplaceDialog* m_pFindDlg{ nullptr };
 	std::unordered_map<ULONG, KnownPoolTag> m_KnownTags;
-	std::vector<SYSTEM_POOLTAG> m_PoolTags;
+	SortedFilteredVector<SYSTEM_POOLTAG> m_PoolTags;
 	std::unordered_map<ULONG, SYSTEM_POOLTAG> m_PoolTagsMap;
 	mutable std::unordered_map<ULONG, CString> m_TagToString;
 	std::unordered_map<ULONG64, Change> m_Changes;
@@ -149,6 +149,7 @@ private:
 	int m_Delay{ 1000 };
 	CFont m_MonoFont;
 	HFONT m_hOldFont{ nullptr };
+	int m_IntervalIndex{ 1 };
 	bool m_IsRunning{ true };
-	inline static int m_Intervals[]{ 0, 500, 1000, 2000, 5000 };
+	inline static int m_Intervals[]{ 500, 1000, 2000, 5000 };
 };

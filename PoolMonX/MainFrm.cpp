@@ -78,7 +78,7 @@ void CMainFrame::DoSort(SortInfo const* si) {
 		return false;
 	};
 
-	std::ranges::sort(m_PoolTags, compare);
+	m_PoolTags.Sort(compare);
 }
 
 int CMainFrame::GetSaveColumnRange(HWND, int&) const {
@@ -308,7 +308,17 @@ int CMainFrame::AddChange(ULONG tag, LONG64 current, LONG64 next, ColumnType typ
 }
 
 bool CMainFrame::DoSave(bool all, PCWSTR path) const {
-	return false;
+	std::ofstream stm;
+	stm.open(path, std::ios::out);
+	if (!stm.good())
+		return false;
+
+	auto text = all ? ListViewHelper::GetAllRowsAsString(m_List, L",", L"\n") : 
+		ListViewHelper::GetSelectedRowsAsString(m_List, L",", L"\n");
+	stm.write(CStringA(text), text.GetLength());
+	stm.close();
+
+	return true;
 }
 
 LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
@@ -330,9 +340,16 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	auto tb = ToolbarHelper::CreateAndInitToolBar(m_hWnd, buttons, _countof(buttons));
 	AddSimpleReBarBand(tb);
 	UIAddToolBar(tb);
+	
+	CRect rc(0, 0, 0, 20);
+	m_QuickEdit.Create(m_hWnd, rc, nullptr, WS_CHILD | WS_VISIBLE | WS_BORDER);
+	AddSimpleReBarBand(m_QuickEdit, nullptr, 0, 200, 1);
+	SizeSimpleReBarBands();
+	m_QuickEdit.SetWindowPos(nullptr, 0, 0, 200, 20, SWP_NOMOVE | SWP_NOREPOSITION);
 
 	m_hWndClient = m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_OWNERDATA);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+	m_QuickEdit.SetFont(m_List.GetFont());
 
 	auto cm = GetColumnManager(m_List);
 	cm->AddColumn(L"Tag", LVCFMT_LEFT, 60, ColumnType::TagName);
@@ -433,9 +450,10 @@ LRESULT CMainFrame::OnFileExit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	return 0;
 }
 
-LRESULT CMainFrame::OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	// TODO: add code to initialize document
-
+LRESULT CMainFrame::OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD id, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto onTop = !(GetExStyle() & WS_EX_TOPMOST);
+	SetWindowPos(onTop ? HWND_TOPMOST : HWND_NOTOPMOST, &rcDefault, SWP_NOSIZE | SWP_NOMOVE);
+	UISetCheck(id, onTop);
 	return 0;
 }
 
