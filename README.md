@@ -8,6 +8,7 @@ Monitor Kernel pool allocations tags
 * If WinDbg is installed, the updated `pooltag.txt` file is used for source and description
 * Nicer icons :)
 * Hit SPACE to pause/resume
+* Dark mode (coming soon)
 
 ## Building
 
