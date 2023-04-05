@@ -210,8 +210,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,0,0,0
- PRODUCTVERSION 3,0,0,0
+ FILEVERSION 3,0,1,0
+ PRODUCTVERSION 3,0,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -228,12 +228,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Scorpio Software"
             VALUE "FileDescription", "Kernel Pool Monitor"
-            VALUE "FileVersion", "3.0.0.0"
+            VALUE "FileVersion", "3.0.1.0"
             VALUE "InternalName", "PoolMonX"
             VALUE "LegalCopyright", "©2016-2023 Pavel Yosifovich"
             VALUE "OriginalFilename", "PoolMonX.exe"
             VALUE "ProductName", "PoolMonX"
-            VALUE "ProductVersion", "3.0"
+            VALUE "ProductVersion", "3.0.1"
         END
     END
     BLOCK "VarFileInfo"

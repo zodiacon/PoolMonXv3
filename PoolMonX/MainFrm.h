@@ -4,6 +4,7 @@
 #include <OwnerDrawnMenu.h>
 #include <SortedFilteredVector.h>
 #include <QuickFindEdit.h>
+#include "AppSettings.h"
 
 struct SYSTEM_POOLTAG {
 	union {
@@ -48,6 +49,8 @@ public:
 	DWORD OnSubItemPrePaint(int, LPNMCUSTOMDRAW cd);
 
 protected:
+	static const UINT WM_UPDATE_DARKMODE = WM_APP + 56;
+
 	BEGIN_MSG_MAP(CMainFrame)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		COMMAND_CODE_HANDLER(EN_DELAYCHANGE, OnSearchTextChanged)
@@ -68,8 +71,11 @@ protected:
 		COMMAND_ID_HANDLER(ID_FILE_SAVESELECTION, OnFileSaveSelected)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
+		COMMAND_ID_HANDLER(ID_OPTIONS_DARKMODE, OnToggleDarkMode)
 		COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER(ID_HELP_ABOUTWINDOWS, OnAboutWindows)
+		MESSAGE_HANDLER(WM_SHOWWINDOW, OnShowWindow)
+		MESSAGE_HANDLER(WM_UPDATE_DARKMODE, OnUpdateDarkMode)
 		CHAIN_MSG_MAP(CCustomDraw<CMainFrame>)
 		CHAIN_MSG_MAP(CVirtualListView<CMainFrame>)
 		CHAIN_MSG_MAP(COwnerDrawnMenu<CMainFrame>)
@@ -110,6 +116,7 @@ private:
 	bool DoSave(bool all, PCWSTR path) const;
 	void SaveCommon(bool all);
 	void UpdateIntervalText();
+	void InitDarkTheme() const;
 
 	struct KnownPoolTag {
 		ULONG Tag;
@@ -133,6 +140,7 @@ private:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled);
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled);
+	LRESULT OnShowWindow(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled);
 	LRESULT OnFileExit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnAlwaysOnTop(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnViewStatusBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -151,6 +159,8 @@ private:
 	LRESULT OnFind(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
 	LRESULT OnEditFindNext(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnUpdateInterval(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnUpdateDarkMode(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnToggleDarkMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 private:
 	CListViewCtrl m_List;
@@ -171,5 +181,7 @@ private:
 	std::function<bool(SYSTEM_POOLTAG const&, int)> m_Filter;
 	mutable bool m_IsRunning{ false };
 	CString m_SearchText;
+	AppSettings m_Settings;
+	inline static Theme s_DarkTheme;
 	inline static int s_Intervals[]{ 500, 1000, 2000, 5000 };
 };

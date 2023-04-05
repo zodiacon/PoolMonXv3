@@ -338,6 +338,9 @@ bool CMainFrame::DoSave(bool all, PCWSTR path) const {
 }
 
 LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	InitDarkTheme();
+	m_Settings.LoadFromKey(L"SOFTWARE\\ScorpioSoftware\\PoolMonX");
+
 	CreateSimpleStatusBar();
 	m_StatusBar.SubclassWindow(m_hWndStatusBar);
 	int parts[] = { 100, 130, 500 };
@@ -370,17 +373,17 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 
 	auto cm = GetColumnManager(m_List);
 	cm->AddColumn(L"Tag", LVCFMT_LEFT, 60, ColumnType::TagName);
-	cm->AddColumn(L"Value", LVCFMT_RIGHT, 90, ColumnType::TagValue);
-	cm->AddColumn(L"Paged Allocs", LVCFMT_RIGHT, 90, ColumnType::PagedAllocs);
-	cm->AddColumn(L"Paged Frees", LVCFMT_RIGHT, 90, ColumnType::PagedFrees);
-	cm->AddColumn(L"Paged Diff", LVCFMT_RIGHT, 90, ColumnType::PagedDiff);
-	cm->AddColumn(L"Paged Usage", LVCFMT_RIGHT, 90, ColumnType::PagedUsage);
-	cm->AddColumn(L"NPaged Allocs", LVCFMT_RIGHT, 90, ColumnType::NonPagedAllocs);
-	cm->AddColumn(L"NPaged Frees", LVCFMT_RIGHT, 90, ColumnType::NonPagedFrees);
-	cm->AddColumn(L"NPaged Diff", LVCFMT_RIGHT, 90, ColumnType::NonPagedDiff);
-	cm->AddColumn(L"NPaged Usage", LVCFMT_RIGHT, 90, ColumnType::NonPagedUsage);
-	cm->AddColumn(L"Source", LVCFMT_LEFT, 150, ColumnType::SourceName);
-	cm->AddColumn(L"Description", LVCFMT_LEFT, 300, ColumnType::SourceDescription);
+	cm->AddColumn(L"Value", LVCFMT_RIGHT, 100, ColumnType::TagValue);
+	cm->AddColumn(L"Paged Allocs", LVCFMT_RIGHT, 100, ColumnType::PagedAllocs);
+	cm->AddColumn(L"Paged Frees", LVCFMT_RIGHT, 100, ColumnType::PagedFrees);
+	cm->AddColumn(L"Paged Diff", LVCFMT_RIGHT, 100, ColumnType::PagedDiff);
+	cm->AddColumn(L"Paged Usage", LVCFMT_RIGHT, 100, ColumnType::PagedUsage);
+	cm->AddColumn(L"NPaged Allocs", LVCFMT_RIGHT, 100, ColumnType::NonPagedAllocs);
+	cm->AddColumn(L"NPaged Frees", LVCFMT_RIGHT, 100, ColumnType::NonPagedFrees);
+	cm->AddColumn(L"NPaged Diff", LVCFMT_RIGHT, 100, ColumnType::NonPagedDiff);
+	cm->AddColumn(L"NPaged Usage", LVCFMT_RIGHT, 100, ColumnType::NonPagedUsage);
+	cm->AddColumn(L"Source", LVCFMT_LEFT, 180, ColumnType::SourceName);
+	cm->AddColumn(L"Description", LVCFMT_LEFT, 360, ColumnType::SourceDescription);
 
 	auto pLoop = _Module.GetMessageLoop();
 	ATLASSERT(pLoop != nullptr);
@@ -408,6 +411,15 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 		AtlMessageBox(m_hWnd, L"Out of memory!", IDR_MAINFRAME, MB_ICONERROR);
 		return -1;
 	}
+
+	if (m_Settings.DarkMode()) {
+		ThemeHelper::SetCurrentTheme(s_DarkTheme, m_hWnd);
+		ThemeHelper::UpdateMenuColors(*this, true);
+		UpdateMenu(GetMenu(), true);
+		DrawMenuBar();
+		UISetCheck(ID_OPTIONS_DARKMODE, true);
+	}
+
 	SendMessage(WM_COMMAND, ID_VIEW_RUN);
 	UISetRadioMenuItem(ID_UPDATEINTERVAL_0 + m_IntervalIndex, ID_UPDATEINTERVAL_0, ID_UPDATEINTERVAL_5SECONDS);
 	UpdateIntervalText();
@@ -436,7 +448,30 @@ void CMainFrame::InitMenu() {
 	}
 }
 
+LRESULT CMainFrame::OnShowWindow(UINT, WPARAM show, LPARAM, BOOL&) {
+	bool static shown = false;
+	if (show && !shown) {
+		shown = true;
+		auto wp = m_Settings.MainWindowPlacement();
+		if (wp.showCmd != SW_HIDE) {
+			SetWindowPlacement(&wp);
+			UpdateLayout();
+		}
+		if (m_Settings.AlwaysOnTop()) {
+			SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+			UISetCheck(ID_OPTIONS_ALWAYSONTOP, true);
+		}
+	}
+	return 0;
+}
+
 LRESULT CMainFrame::OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	WINDOWPLACEMENT wp{ sizeof(wp) };
+	GetWindowPlacement(&wp);
+	m_Settings.MainWindowPlacement(wp);
+	m_Settings.AlwaysOnTop(GetExStyle() & WS_EX_TOPMOST);
+	m_Settings.Save();
+
 	::VirtualFree(m_Buffer, 0, MEM_RELEASE);
 
 	auto pLoop = _Module.GetMessageLoop();
@@ -653,6 +688,56 @@ LRESULT CMainFrame::OnUpdateInterval(WORD, WORD id, HWND, BOOL&) {
 		SetTimer(1, m_Interval);
 	UISetRadioMenuItem(id, ID_UPDATEINTERVAL_0, ID_UPDATEINTERVAL_5SECONDS);
 	UpdateIntervalText();
+
+	return 0;
+}
+
+void CMainFrame::InitDarkTheme() const {
+	s_DarkTheme.BackColor = s_DarkTheme.SysColors[COLOR_WINDOW] = RGB(32, 32, 32);
+	s_DarkTheme.TextColor = s_DarkTheme.SysColors[COLOR_WINDOWTEXT] = RGB(248, 248, 248);
+	s_DarkTheme.SysColors[COLOR_HIGHLIGHT] = RGB(10, 10, 160);
+	s_DarkTheme.SysColors[COLOR_HIGHLIGHTTEXT] = RGB(240, 240, 240);
+	s_DarkTheme.SysColors[COLOR_MENUTEXT] = s_DarkTheme.TextColor;
+	s_DarkTheme.SysColors[COLOR_CAPTIONTEXT] = s_DarkTheme.TextColor;
+	s_DarkTheme.SysColors[COLOR_BTNFACE] = s_DarkTheme.BackColor;
+	s_DarkTheme.SysColors[COLOR_BTNTEXT] = s_DarkTheme.TextColor;
+	s_DarkTheme.SysColors[COLOR_3DLIGHT] = RGB(192, 192, 192);
+	s_DarkTheme.SysColors[COLOR_BTNHIGHLIGHT] = RGB(192, 192, 192);
+	s_DarkTheme.SysColors[COLOR_CAPTIONTEXT] = s_DarkTheme.TextColor;
+	s_DarkTheme.SysColors[COLOR_3DSHADOW] = s_DarkTheme.TextColor;
+	s_DarkTheme.SysColors[COLOR_SCROLLBAR] = s_DarkTheme.BackColor;
+	s_DarkTheme.SysColors[COLOR_APPWORKSPACE] = s_DarkTheme.BackColor;
+	s_DarkTheme.StatusBar.BackColor = RGB(16, 0, 16);
+	s_DarkTheme.StatusBar.TextColor = s_DarkTheme.TextColor;
+
+	s_DarkTheme.Name = L"Dark";
+	s_DarkTheme.Menu.BackColor = s_DarkTheme.BackColor;
+	s_DarkTheme.Menu.TextColor = s_DarkTheme.TextColor;
+}
+
+LRESULT CMainFrame::OnUpdateDarkMode(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	if (settings.DarkMode())
+		ThemeHelper::SetCurrentTheme(s_DarkTheme, m_hWnd);
+	else
+		ThemeHelper::SetDefaultTheme(m_hWnd);
+	ThemeHelper::UpdateMenuColors(*this, settings.DarkMode());
+	UpdateMenuBase(GetMenu(), true);
+	DrawMenuBar();
+	UISetCheck(ID_OPTIONS_DARKMODE, settings.DarkMode());
+	return 0;
+}
+
+LRESULT CMainFrame::OnToggleDarkMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	auto& settings = AppSettings::Get();
+	settings.DarkMode(!settings.DarkMode());
+	UISetCheck(ID_OPTIONS_DARKMODE, settings.DarkMode());
+	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
+
+	::EnumThreadWindows(::GetCurrentThreadId(), [](auto hWnd, auto) {
+		::PostMessage(hWnd, WM_UPDATE_DARKMODE, 0, 0);
+		return TRUE;
+		}, 0);
 
 	return 0;
 }
