@@ -340,7 +340,7 @@ bool CMainFrame::DoSave(bool all, PCWSTR path) const {
 LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 	CreateSimpleStatusBar();
 	m_StatusBar.SubclassWindow(m_hWndStatusBar);
-	int parts[] = { 100, 300, 500 };
+	int parts[] = { 100, 130, 500 };
 	m_StatusBar.SetParts(_countof(parts), parts);
 	UISetCheck(ID_VIEW_STATUS_BAR, 1);
 
@@ -408,6 +408,9 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 		AtlMessageBox(m_hWnd, L"Out of memory!", IDR_MAINFRAME, MB_ICONERROR);
 		return -1;
 	}
+	SendMessage(WM_COMMAND, ID_VIEW_RUN);
+	UISetRadioMenuItem(ID_UPDATEINTERVAL_0 + m_IntervalIndex, ID_UPDATEINTERVAL_0, ID_UPDATEINTERVAL_5SECONDS);
+	UpdateIntervalText();
 
 	Refresh();
 	SetTimer(1, m_Interval);
@@ -487,6 +490,14 @@ LRESULT CMainFrame::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 	return 0;
 }
 
+LRESULT CMainFrame::OnAboutWindows(WORD, WORD, HWND, BOOL&) {
+	::TrySubmitThreadpoolCallback([](auto, auto) {
+		::ShellAbout(nullptr, L"Windows", nullptr, nullptr);
+		}, nullptr, nullptr);
+
+	return 0;
+}
+
 void CMainFrame::SaveCommon(bool all) {
 	auto running = m_IsRunning;
 	if (running)
@@ -504,13 +515,27 @@ void CMainFrame::SaveCommon(bool all) {
 		SendMessage(WM_COMMAND, ID_VIEW_RUN);
 }
 
+void CMainFrame::UpdateIntervalText() {
+	if (!m_IsRunning)
+		m_StatusBar.SetText(2, L"Paused");
+	else {
+		static PCWSTR intervals[] = { L"0.5 second", L"1 Second", L"2 Seconds", L"5 Seconds" };
+		m_StatusBar.SetText(2, CString(L"Update: ") + intervals[m_IntervalIndex]);
+	}
+}
+
 LRESULT CMainFrame::OnFileSave(WORD, WORD, HWND, BOOL&) {
 	SaveCommon(true);
 	return 0;
 }
 
 LRESULT CMainFrame::OnFileSaveSelected(WORD, WORD, HWND, BOOL&) {
-	SaveCommon(false);
+	if (m_List.GetSelectedCount() == 0) {
+		AtlMessageBox(m_hWnd, L"No items selected.", IDR_MAINFRAME, MB_ICONWARNING);
+	}
+	else {
+		SaveCommon(false);
+	}
 	return 0;
 }
 
@@ -534,6 +559,8 @@ LRESULT CMainFrame::OnViewPause(WORD src, WORD id, HWND, BOOL& handled) {
 	UISetCheck(ID_VIEW_RUN, FALSE);
 	UISetCheck(ID_VIEW_PAUSE, TRUE);
 	m_IsRunning = false;
+	m_StatusBar.SetIcon(1, AtlLoadIconImage(IDI_PAUSE, 0, 16, 16));
+	UpdateIntervalText();
 
 	return 0;
 }
@@ -547,6 +574,8 @@ LRESULT CMainFrame::OnViewRun(WORD, WORD, HWND, BOOL& handled) {
 	UISetCheck(ID_VIEW_RUN, TRUE);
 	UISetCheck(ID_VIEW_PAUSE, FALSE);
 	m_IsRunning = true;
+	m_StatusBar.SetIcon(1, AtlLoadIconImage(IDI_RUN, 0, 16, 16));
+	UpdateIntervalText();
 
 	return 0;
 }
@@ -615,4 +644,15 @@ LRESULT CMainFrame::OnFind(UINT msg, WPARAM wp, LPARAM lp, BOOL&) {
 
 LRESULT CMainFrame::OnEditFindNext(WORD, WORD, HWND, BOOL&) {
 	return SendMessage(CFindReplaceDialog::GetFindReplaceMsg());
+}
+
+LRESULT CMainFrame::OnUpdateInterval(WORD, WORD id, HWND, BOOL&) {
+	m_IntervalIndex = id - ID_UPDATEINTERVAL_0;
+	m_Interval = s_Intervals[m_IntervalIndex];
+	if (m_IsRunning)
+		SetTimer(1, m_Interval);
+	UISetRadioMenuItem(id, ID_UPDATEINTERVAL_0, ID_UPDATEINTERVAL_5SECONDS);
+	UpdateIntervalText();
+
+	return 0;
 }
