@@ -12,7 +12,7 @@ Monitor Kernel pool allocations tags
 
 ## Building
 
-I have started to move away from Nuget towards [vcpckg](https://github.com/microsoft/vcpkg). Install *Vcpkg* and then install the following packages:
+I have started to move away from Nuget towards [Vcpkg](https://github.com/microsoft/vcpkg). Install *Vcpkg* and then install the following packages:
 * `wil:x64-windows`
 * `wtl:x64-windows`
 * `detours:x64-windows`
