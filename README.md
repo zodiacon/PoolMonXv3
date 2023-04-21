@@ -17,6 +17,8 @@ I have started to move away from Nuget towards [Vcpkg](https://github.com/micros
 * `wtl:x64-windows`
 * `detours:x64-windows`
 
+Clone the repo with the `--recursive` flag to clone submodules as well.
+
 Then open the solution file with Visual Studio 2022 and build.
 
 ## Screenshot
