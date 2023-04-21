@@ -21,6 +21,8 @@ Then open the solution file with Visual Studio 2022 and build.
 
 ## Screenshot
 
+The Green color indicates number is higher than previous. The Red color indicates a lower number than previous update. You can pause/resume updates by hitting SPACE (or using the Toolbar).
+
 ![](https://github.com/zodiacon/PoolMonXv3/blob/master/poolmonxv3.png)
 
 ![](https://github.com/zodiacon/PoolMonXv3/blob/master/poolmonxv3dark.png)
