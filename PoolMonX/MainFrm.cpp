@@ -370,7 +370,6 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	m_QuickEdit.SetFont(m_List.GetFont());
 
 	CReBarCtrl(m_hWndToolBar).LockBands(true);
-	m_QuickEdit.SetWindowPos(nullptr, 0, 0, 200, 20, SWP_NOMOVE | SWP_NOREPOSITION);
 	SizeSimpleReBarBands();
 
 	auto cm = GetColumnManager(m_List);
