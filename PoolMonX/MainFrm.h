@@ -1,7 +1,6 @@
 #pragma once
 
 #include <VirtualListView.h>
-#include <OwnerDrawnMenu.h>
 #include <SortedFilteredVector.h>
 #include <QuickFindEdit.h>
 #include "AppSettings.h"
@@ -29,7 +28,6 @@ class CMainFrame :
 	public CAutoUpdateUI<CMainFrame>,
 	public CVirtualListView<CMainFrame>,
 	public CCustomDraw<CMainFrame>,
-	public COwnerDrawnMenu<CMainFrame>,
 	public CMessageFilter, 
 	public CIdleHandler {
 public:
@@ -46,11 +44,10 @@ public:
 
 	DWORD OnPrePaint(int, LPNMCUSTOMDRAW cd);
 	DWORD OnItemPrePaint(int, LPNMCUSTOMDRAW cd);
-	DWORD OnSubItemPrePaint(int, LPNMCUSTOMDRAW cd);
+	DWORD OnSubItemPrePaint(int /*idCtrl*/, LPNMCUSTOMDRAW /*lpNMCustomDraw*/);
 
 protected:
 	static const UINT WM_UPDATE_DARKMODE = WM_APP + 56;
-
 	BEGIN_MSG_MAP(CMainFrame)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		COMMAND_CODE_HANDLER(EN_DELAYCHANGE, OnSearchTextChanged)
@@ -78,7 +75,6 @@ protected:
 		MESSAGE_HANDLER(WM_UPDATE_DARKMODE, OnUpdateDarkMode)
 		CHAIN_MSG_MAP(CCustomDraw<CMainFrame>)
 		CHAIN_MSG_MAP(CVirtualListView<CMainFrame>)
-		CHAIN_MSG_MAP(COwnerDrawnMenu<CMainFrame>)
 		CHAIN_MSG_MAP(CAutoUpdateUI<CMainFrame>)
 		CHAIN_MSG_MAP(CFrameWindowImpl<CMainFrame>)
 	END_MSG_MAP()
@@ -102,7 +98,7 @@ private:
 		All
 	};
 
-	void InitMenu();
+	void InitMenu(HMENU hMenu);
 	void Refresh();
 	void UpdateUI();
 	bool LoadPoolTags();
@@ -116,7 +112,6 @@ private:
 	bool DoSave(bool all, PCWSTR path) const;
 	void SaveCommon(bool all);
 	void UpdateIntervalText();
-	void InitDarkTheme() const;
 
 	struct KnownPoolTag {
 		ULONG Tag;
@@ -182,6 +177,5 @@ private:
 	mutable bool m_IsRunning{ false };
 	CString m_SearchText;
 	AppSettings m_Settings;
-	inline static Theme s_DarkTheme;
 	inline static int s_Intervals[]{ 500, 1000, 2000, 5000 };
 };

@@ -8,11 +8,11 @@
 #include "MainFrm.h"
 #include "Helpers.h"
 #include <fstream>
-#include <ThemeHelper.h>
 #include <SortHelper.h>
 #include <ToolbarHelper.h>
 #include <ClipboardHelper.h>
 #include <ListViewhelper.h>
+#include <WTLHelper.h>
 
 #pragma comment(lib, "ntdll")
 
@@ -99,18 +99,23 @@ bool CMainFrame::OnRightClickList(HWND, int row, int col, POINT const& pt) {
 
 	CMenu menu;
 	menu.LoadMenu(IDR_CONTEXT);
-
-	return ShowContextMenu(menu.GetSubMenu(0), 0, pt.x, pt.y);
+	auto hMenu = menu.GetSubMenu(0);
+	InitMenu(hMenu);
+	return TrackPopupMenuEx(hMenu, 0, pt.x, pt.y, m_hWnd, nullptr);
 }
 
 DWORD CMainFrame::OnPrePaint(int, LPNMCUSTOMDRAW cd) {
+	if (cd->hdr.hwndFrom != m_List) {
+		SetMsgHandled(FALSE);
+		return 0;
+	}
 	return CDRF_NOTIFYITEMDRAW;
 }
 
 DWORD CMainFrame::OnItemPrePaint(int, LPNMCUSTOMDRAW cd) {
 	if (cd->hdr.hwndFrom != m_List) {
 		SetMsgHandled(FALSE);
-		return 0;
+		return CDRF_DODEFAULT;
 	}
 
 	auto lv = (NMLVCUSTOMDRAW*)cd;
@@ -286,11 +291,11 @@ std::wstring const& CMainFrame::GetTagDesc(ULONG tag) const {
 }
 
 COLORREF CMainFrame::GetNewColor() const {
-	return ThemeHelper::IsDefault() ? RGB(0, 255, 0) : RGB(0, 128, 0);
+	return WTLHelper::IsDarkMode() ? RGB(0, 128, 0) : RGB(0, 255, 0);
 }
 
 COLORREF CMainFrame::GetOldColor() const {
-	return ThemeHelper::IsDefault() ? RGB(255, 96, 0) : RGB(128, 0, 0);
+	return WTLHelper::IsDarkMode() ? RGB(128, 0, 0) : RGB(255, 96, 0);
 }
 
 int CMainFrame::AddChanges(SYSTEM_POOLTAG const& current, SYSTEM_POOLTAG const& next) {
@@ -329,7 +334,7 @@ bool CMainFrame::DoSave(bool all, PCWSTR path) const {
 	if (!stm.good())
 		return false;
 
-	auto text = all ? ListViewHelper::GetAllRowsAsString(m_List, L",", L"\n") : 
+	auto text = all ? ListViewHelper::GetAllRowsAsString(m_List, L",", L"\n") :
 		ListViewHelper::GetSelectedRowsAsString(m_List, L",", L"\n");
 	stm.write(CStringA(text), text.GetLength());
 	stm.close();
@@ -338,7 +343,6 @@ bool CMainFrame::DoSave(bool all, PCWSTR path) const {
 }
 
 LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-	InitDarkTheme();
 	m_Settings.LoadFromKey(L"SOFTWARE\\ScorpioSoftware\\PoolMonX");
 
 	CreateSimpleStatusBar();
@@ -359,13 +363,13 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	auto tb = ToolbarHelper::CreateAndInitToolBar(m_hWnd, buttons, _countof(buttons));
 	AddSimpleReBarBand(tb);
 	UIAddToolBar(tb);
-	
+
 	CRect rc(0, 0, 0, 20);
 	m_QuickEdit.Create(m_hWnd, rc, nullptr, WS_CHILD | WS_VISIBLE | WS_BORDER);
 	AddSimpleReBarBand(m_QuickEdit, nullptr, 0, 200, 1);
 	m_QuickEdit.SetCueBannerText(L"Type to filter (Ctrl+Q)");
 
-	m_hWndClient = m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_OWNERDATA);
+	m_hWndClient = m_List.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_OWNERDATA | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	m_List.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 	m_QuickEdit.SetFont(m_List.GetFont());
 
@@ -394,10 +398,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	LoadPoolTags();
 
 	auto menu = GetMenu();
-	InitMenu();
-	SetCheckIcon(IDI_CHECK, IDI_RADIO);
+	InitMenu(GetMenu());
 
-	AddMenu(menu);
 	UIAddMenu(menu);
 	UISetCheck(ID_VIEW_RUN, TRUE);
 
@@ -413,13 +415,10 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 		return -1;
 	}
 
-	if (m_Settings.DarkMode()) {
-		ThemeHelper::SetCurrentTheme(s_DarkTheme, m_hWnd);
-		ThemeHelper::UpdateMenuColors(*this, true);
-		UpdateMenu(GetMenu(), true);
-		DrawMenuBar();
-		UISetCheck(ID_OPTIONS_DARKMODE, true);
-	}
+	WTLHelper::SwitchToMode(m_Settings.DarkMode() ? DarkModeKind::Dark : DarkModeKind::Classic, m_hWnd);
+	InitMenu(GetMenu());
+	DrawMenuBar();
+	UISetCheck(ID_OPTIONS_DARKMODE, m_Settings.DarkMode());
 
 	SendMessage(WM_COMMAND, ID_VIEW_RUN);
 	UISetRadioMenuItem(ID_UPDATEINTERVAL_0 + m_IntervalIndex, ID_UPDATEINTERVAL_0, ID_UPDATEINTERVAL_5SECONDS);
@@ -432,10 +431,8 @@ LRESULT CMainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/
 	return 0;
 }
 
-void CMainFrame::InitMenu() {
-	struct {
-		UINT id, icon;
-	} cmds[] = {
+void CMainFrame::InitMenu(HMENU hMenu) {
+	MenuItemData cmds[]{
 		{ ID_EDIT_COPY, IDI_COPY },
 		{ ID_EDIT_FIND, IDI_FIND },
 		{ ID_FILE_SAVE, IDI_SAVE },
@@ -444,9 +441,7 @@ void CMainFrame::InitMenu() {
 		{ ID_VIEW_PAUSE, IDI_PAUSE },
 		{ ID_OPTIONS_ALWAYSONTOP, IDI_PIN },
 	};
-	for (auto& cmd : cmds) {
-		AddCommand(cmd.id, cmd.icon);
-	}
+	WTLHelper::InitMenu(hMenu, cmds, _countof(cmds));
 }
 
 LRESULT CMainFrame::OnShowWindow(UINT, WPARAM show, LPARAM, BOOL&) {
@@ -529,7 +524,7 @@ LRESULT CMainFrame::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 LRESULT CMainFrame::OnAboutWindows(WORD, WORD, HWND, BOOL&) {
 	::TrySubmitThreadpoolCallback([](auto, auto) {
 		::ShellAbout(nullptr, L"Windows", nullptr, nullptr);
-		}, nullptr, nullptr);
+	}, nullptr, nullptr);
 
 	return 0;
 }
@@ -540,9 +535,9 @@ void CMainFrame::SaveCommon(bool all) {
 		SendMessage(WM_COMMAND, ID_VIEW_PAUSE);
 	CSimpleFileDialog dlg(FALSE, L"csv", nullptr, OFN_ENABLESIZING | OFN_OVERWRITEPROMPT | OFN_EXPLORER,
 		L"CSV Files (*.csv)\0*.csv\0Text Files (*.txt)\0*.txt\0All Files\0*.*\0", m_hWnd);
-	ThemeHelper::Suspend();
+	WTLHelper::SuspendHook();
 	auto ok = IDOK == dlg.DoModal();
-	ThemeHelper::Resume();
+	WTLHelper::ResumeHook();
 	if (ok) {
 		if (!DoSave(all, dlg.m_szFileName))
 			AtlMessageBox(m_hWnd, L"Failed to save file.", IDR_MAINFRAME, MB_ICONERROR);
@@ -651,7 +646,7 @@ LRESULT CMainFrame::OnSearchTextChanged(WORD, WORD, HWND, BOOL&) {
 			if (str = GetTagDesc(tag.TagUlong).c_str(), str.MakeUpper(); str.Find(m_SearchText) >= 0)
 				return true;
 			return false;
-			};
+		};
 	}
 	Refresh();
 	return 0;
@@ -693,39 +688,7 @@ LRESULT CMainFrame::OnUpdateInterval(WORD, WORD id, HWND, BOOL&) {
 	return 0;
 }
 
-void CMainFrame::InitDarkTheme() const {
-	s_DarkTheme.BackColor = s_DarkTheme.SysColors[COLOR_WINDOW] = RGB(32, 32, 32);
-	s_DarkTheme.TextColor = s_DarkTheme.SysColors[COLOR_WINDOWTEXT] = RGB(248, 248, 248);
-	s_DarkTheme.SysColors[COLOR_HIGHLIGHT] = RGB(10, 10, 160);
-	s_DarkTheme.SysColors[COLOR_HIGHLIGHTTEXT] = RGB(240, 240, 240);
-	s_DarkTheme.SysColors[COLOR_MENUTEXT] = s_DarkTheme.TextColor;
-	s_DarkTheme.SysColors[COLOR_CAPTIONTEXT] = s_DarkTheme.TextColor;
-	s_DarkTheme.SysColors[COLOR_BTNFACE] = s_DarkTheme.BackColor;
-	s_DarkTheme.SysColors[COLOR_BTNTEXT] = s_DarkTheme.TextColor;
-	s_DarkTheme.SysColors[COLOR_3DLIGHT] = RGB(192, 192, 192);
-	s_DarkTheme.SysColors[COLOR_BTNHIGHLIGHT] = RGB(192, 192, 192);
-	s_DarkTheme.SysColors[COLOR_CAPTIONTEXT] = s_DarkTheme.TextColor;
-	s_DarkTheme.SysColors[COLOR_3DSHADOW] = s_DarkTheme.TextColor;
-	s_DarkTheme.SysColors[COLOR_SCROLLBAR] = s_DarkTheme.BackColor;
-	s_DarkTheme.SysColors[COLOR_APPWORKSPACE] = s_DarkTheme.BackColor;
-	s_DarkTheme.StatusBar.BackColor = RGB(16, 0, 16);
-	s_DarkTheme.StatusBar.TextColor = s_DarkTheme.TextColor;
-
-	s_DarkTheme.Name = L"Dark";
-	s_DarkTheme.Menu.BackColor = s_DarkTheme.BackColor;
-	s_DarkTheme.Menu.TextColor = s_DarkTheme.TextColor;
-}
-
 LRESULT CMainFrame::OnUpdateDarkMode(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
-	auto& settings = AppSettings::Get();
-	if (settings.DarkMode())
-		ThemeHelper::SetCurrentTheme(s_DarkTheme, m_hWnd);
-	else
-		ThemeHelper::SetDefaultTheme(m_hWnd);
-	ThemeHelper::UpdateMenuColors(*this, settings.DarkMode());
-	UpdateMenuBase(GetMenu(), true);
-	DrawMenuBar();
-	UISetCheck(ID_OPTIONS_DARKMODE, settings.DarkMode());
 	return 0;
 }
 
@@ -733,12 +696,9 @@ LRESULT CMainFrame::OnToggleDarkMode(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	auto& settings = AppSettings::Get();
 	settings.DarkMode(!settings.DarkMode());
 	UISetCheck(ID_OPTIONS_DARKMODE, settings.DarkMode());
-	m_List.RedrawItems(m_List.GetTopIndex(), m_List.GetTopIndex() + m_List.GetCountPerPage());
-
-	::EnumThreadWindows(::GetCurrentThreadId(), [](auto hWnd, auto) {
-		::PostMessage(hWnd, WM_UPDATE_DARKMODE, 0, 0);
-		return TRUE;
-		}, 0);
+	WTLHelper::SwitchToMode(m_Settings.DarkMode() ? DarkModeKind::Dark : DarkModeKind::Classic, m_hWnd);
+	InitMenu(GetMenu());
+	m_List.RedrawWindow();
 
 	return 0;
 }
